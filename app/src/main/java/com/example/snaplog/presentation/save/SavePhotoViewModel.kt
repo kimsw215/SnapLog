@@ -1,4 +1,4 @@
-package com.example.snaplog.presentation.capture
+package com.example.snaplog.presentation.save
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -10,12 +10,19 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class CaptureReviewViewModel @Inject constructor(
+class SavePhotoViewModel @Inject constructor(
     private val savePhotoUseCase: SavePhotoUseCase
 ) : ViewModel() {
-
-    var uiState = mutableStateOf(CaptureUiState())
+    var uiState = mutableStateOf(SavePhotoUiState())
         private set
+
+    fun onImagePathClear() {
+        uiState.value = uiState.value.copy(imagePath = "")
+    }
+
+    fun onImagePathChange(path: String) {
+        uiState.value = uiState.value.copy(imagePath = path)
+    }
 
     fun onMemoChange(text: String) {
         uiState.value = uiState.value.copy(memo = text)
@@ -25,16 +32,14 @@ class CaptureReviewViewModel @Inject constructor(
         uiState.value = uiState.value.copy(tag = tag)
     }
 
-    fun savaPhoto(
-        imagePath: String,
-        onSaved: () -> Unit
-    ) {
+    fun savaPhoto(onSaved: () -> Unit) {
+        val currentState = uiState.value
         viewModelScope.launch {
             val photo = Photo(
                 id = 0L,
-                imagePath = imagePath,
-                memo = uiState.value.memo,
-                tag = uiState.value.tag,
+                imagePath = currentState.imagePath,
+                memo = currentState.memo,
+                tag = currentState.tag,
                 createdAt = System.currentTimeMillis()
             )
             savePhotoUseCase(photo)
@@ -43,7 +48,8 @@ class CaptureReviewViewModel @Inject constructor(
     }
 }
 
-data class CaptureUiState(
+data class SavePhotoUiState(
+    val imagePath: String = "",
     val memo: String = "",
     val tag: String = "All"
 )

@@ -1,7 +1,6 @@
 package com.example.snaplog.presentation.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,13 +25,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.snaplog.domain.model.Photo
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -59,36 +64,6 @@ private fun HomeScreenContent(
 ) {
     Scaffold(
         floatingActionButton = {
-            /* 커스텀 확장형 플로팅 버튼 예제 (필요 없으면 주석 처리 하세요) */
-            /*var isExpanded by remember { mutableStateOf(false) }
-            val rotation by animateFloatAsState(targetValue = if (isExpanded) 45f else 0f)
-
-            Column(horizontalAlignment = Alignment.End) {
-                // 펼쳐졌을 때 나타날 작은 버튼들
-                AnimatedVisibility(visible = isExpanded) {
-                    Column(
-                        modifier = Modifier.padding(bottom = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        SmallFloatingActionButton(onClick = { *//* 액션 1 *//* }) { Text("A") }
-                        SmallFloatingActionButton(onClick = { *//* 액션 2 *//* }) { Text("B") }
-                        SmallFloatingActionButton(onClick = { *//* 액션 3 *//* }) { Text("C") }
-                    }
-                }
-
-                // 메인 버튼 (+ 모양에서 클릭 시 45도 회전하여 x 모양으로 변함)
-                FloatingActionButton(
-                    onClick = { isExpanded = !isExpanded }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.rotate(rotation)
-                    )
-                }
-            }*/
-
             FloatingActionButton(onClick = onAddClick) {
                 Text("+")
             }
@@ -157,31 +132,67 @@ private fun PhotoItem(
     photo: Photo,
     onClick: () -> Unit
 ) {
+    val date = remember(photo.createdAt) {
+        SimpleDateFormat("yy.MM.dd HH:mm", Locale.KOREA)
+            .format(Date(photo.createdAt))
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
     ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            AsyncImage(
-                model = photo.imagePath,
-                contentDescription = null,
-                modifier = Modifier.size(80.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(
-                    text = photo.memo.ifBlank { "메모 없음" },
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = photo.tag,
-                    style = MaterialTheme.typography.bodySmall
-                )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.small)
+                        .clip(MaterialTheme.shapes.small)
+                ) {
+                    if (photo.imagePath.isBlank()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "사진 없음",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        AsyncImage(
+                            model = photo.imagePath,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = photo.memo.ifBlank { "메모 없음" },
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = photo.tag,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
+            Text(
+                text = date,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 8.dp, bottom = 8.dp)
+            )
         }
     }
 }

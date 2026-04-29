@@ -1,5 +1,6 @@
 package com.example.snaplog.presentation.detail
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,33 +8,37 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.snaplog.domain.model.Photo
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun PhotoDetailScreen(
     photoId: Long,
+    onUpdate: (Long) -> Unit,
     onBack: () -> Unit,
     viewModel: PhotoDetailViewModel = hiltViewModel()
 ) {
@@ -47,11 +52,8 @@ fun PhotoDetailScreen(
 
     PhotoDetailContent(
         uiState = uiState,
-        onBack = onBack,
-        onDelete = { viewModel.delete(onBack) },
-        onSave = { viewModel.save(onBack) },
-        onMemoChange = viewModel::onMemoChange,
-        onTagChange = viewModel::onTagChange
+        onModifyClick = { onUpdate(photoId) },
+        onBack = onBack
     )
 }
 
@@ -59,24 +61,25 @@ fun PhotoDetailScreen(
 @Composable
 private fun PhotoDetailContent(
     uiState: DetailUiState,
-    onBack: () -> Unit,
-    onDelete: () -> Unit,
-    onSave: () -> Unit,
-    onMemoChange: (String) -> Unit,
-    onTagChange: (String) -> Unit
+    onModifyClick: () -> Unit,
+    onBack: () -> Unit
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("사진 수정") },
+                title = { Text("사진 기록") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Text("<")
                     }
                 },
                 actions = {
-                    IconButton(onClick = onDelete) {
-                        Text("삭제")
+                    IconButton(onClick = onModifyClick) {
+                        Text(
+                            text = "수정",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             )
@@ -92,40 +95,59 @@ private fun PhotoDetailContent(
                 Text("로딩 중...")
             }
         } else {
+            val date = remember(uiState.photo?.createdAt) {
+                SimpleDateFormat("yy.MM.dd HH:mm", Locale.KOREA)
+                    .format(Date(uiState.photo?.createdAt ?: 0L))
+            }
+
             Column(
                 modifier = Modifier
                     .padding(padding)
                     .padding(16.dp)
                     .fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                TagSelectorRowDetail(
-                    selected = uiState.tag,
-                    onSelectedChange = onTagChange
+                Text(
+                    text = date,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End
                 )
 
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    val imagePath = uiState.photo?.imagePath
-                    if (imagePath.isNullOrBlank()) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "사진 없음",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                TagReadOnlyRow(selected = uiState.tag)
+
+                if (uiState.photo?.imagePath.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = MaterialTheme.shapes.medium
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "사진 없음",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = MaterialTheme.shapes.medium
                             )
-                        }
-                    } else {
+                            .clip(MaterialTheme.shapes.medium)
+                    ) {
                         AsyncImage(
-                            model = imagePath,
+                            model = uiState.photo?.imagePath,
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -133,42 +155,33 @@ private fun PhotoDetailContent(
                     }
                 }
 
+                // 메모 (읽기 전용)
                 OutlinedTextField(
                     value = uiState.memo,
-                    onValueChange = onMemoChange,
+                    onValueChange = {},
                     label = { Text("메모") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true
                 )
-
-                Button(
-                    onClick = onSave,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("수정 완료")
-                }
             }
         }
     }
 }
 
 @Composable
-private fun TagSelectorRowDetail(
+private fun TagReadOnlyRow(
     selected: String,
-    onSelectedChange: (String) -> Unit
 ) {
-    val tags = listOf("All", "일상", "음식", "풍경", "그 외")
-
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        tags.forEach { tag ->
-            FilterChip(
-                selected = selected == tag,
-                onClick = { onSelectedChange(tag) },
-                label = { Text(tag) }
-            )
-        }
+        FilterChip(
+            selected = true,
+            onClick = { },
+            enabled = true,
+            label = { Text(selected) }
+        )
     }
 }
 
@@ -177,7 +190,7 @@ private fun TagSelectorRowDetail(
 private fun PhotoDetailPreview() {
     val dummyPhoto = Photo(
         id = 1L,
-        imagePath = "", // 빈 경로 테스트
+        imagePath = "",
         memo = "지난 주말 가족 여행에서 찍은 사진!",
         tag = "일상",
         createdAt = System.currentTimeMillis()
@@ -191,9 +204,6 @@ private fun PhotoDetailPreview() {
             tag = dummyPhoto.tag
         ),
         onBack = {},
-        onDelete = {},
-        onSave = {},
-        onMemoChange = {},
-        onTagChange = {}
+        onModifyClick = {}
     )
 }
